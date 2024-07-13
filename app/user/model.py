@@ -8,8 +8,8 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     username = db.Column(db.String(64), index=True)
     email = db.Column(db.String(120), index=True)
-    password_hash = db.Column(db.String(128))
-    tasks = db.relationship('Task', backref="user_tasks", lazy='dynamic')
+    password_hash = db.Column(db.Text)
+    tasks = db.relationship('Task', back_populates="assignee", lazy='dynamic')
 
     def __init__(self, username, email, password_hash):
         self.username = username

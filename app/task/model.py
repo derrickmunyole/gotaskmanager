@@ -17,10 +17,10 @@ class Task(db.Model):
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'))
 
     # Relationships
-    assignee = db.relationship('User', backref='assignee_tasks')
-    project = db.relationship('Project', backref='project_tasks')
-    tags = db.relationship('Tag', secondary='task_tags_m2m', backref='tags_tasks')
-    comments = db.relationship('Comment', backref='task_comments')
+    assignee = db.relationship('User', back_populates='tasks')
+    project = db.relationship('Project', back_populates='tasks')
+    tags = db.relationship('Tag', secondary='task_tags_m2m', back_populates='tasks')
+    comments = db.relationship('Comment', back_populates='task')
 
     estimated_time = db.Column(db.Integer)  # in minutes
     actual_time = db.Column(db.Integer)  # in minutes

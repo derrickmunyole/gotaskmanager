@@ -1,4 +1,3 @@
-import time
 from datetime import datetime, timezone
 
 from app import db
@@ -11,4 +10,4 @@ class Comment(db.Model):
     task_id = db.Column(db.Integer, db.ForeignKey('task.id'))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
-    task = db.relationship('Task', backref='comments_task')
+    task = db.relationship('Task', back_populates='comments')
