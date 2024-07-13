@@ -1,7 +1,7 @@
 import jwt
 import datetime
 from flask import Blueprint, request, jsonify, current_app
-from flask_login import current_user, login_user
+from flask_login import current_user, login_user, login_required
 from werkzeug.security import generate_password_hash
 
 from .model import User
@@ -57,6 +57,36 @@ def register():
 
     return jsonify({'success': True, 'message': 'User registered successfully'}), 201
 
+
+@bp.route('/update', methods=['PUT'])
+@login_required
+def update_user():
+    data = request.get_json()
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('username')
+
+    if not username and not email and not password:
+        return jsonify({'message': 'No data provided to update', 'success': False}), 401
+
+    user = User.query.get(current_user.id)
+
+    if username:
+        if User.query.filter_by('username').first() is None:
+            return jsonify({'message': 'Username already exists', 'success': False}), 401
+        user.username = username
+
+    if email:
+        if User.query.filter_by('email').first() is not None:
+            return jsonify({'message': 'Email already exists', 'success': False}), 401
+        user.email = email
+
+    if password:
+        user.password_hash = generate_password_hash(password)
+
+    db.session.commit()
+
+    return jsonify({'success': True, 'message': 'User information updated successfully'}), 200
 
 
 
