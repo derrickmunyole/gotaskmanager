@@ -14,7 +14,7 @@ login.login_view = 'main.login'
 
 @login.user_loader
 def load_user(user_id):
-    from user.model import User
+    from .user.model import User
     return User.query.get(int(user_id))
 
 
