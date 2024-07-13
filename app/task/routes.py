@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 @bp.route('/tasks', methods=['GET'])
 def get_all_tasks():
-    tasks = []
     try:
         tasks = Task.query.all()
     except Exception as e:
