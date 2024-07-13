@@ -6,7 +6,7 @@ from app.project.model import Project
 app = create_app()
 
 
-@app
+@app.shell_context_processor
 def make_shell_context():
     return {
         'db': db,
