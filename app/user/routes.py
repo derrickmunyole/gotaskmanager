@@ -65,7 +65,6 @@ class UserLogin(Resource):
                     'message': 'Incorrect password. Please try again.'
                 }, 401
 
-            login_user(user)
             jwt_token = jwt.encode({
                 'user_id': user.id,
                 'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)
@@ -209,3 +208,4 @@ class UpdateUser(Resource):
                 'success': False,
                 'message': 'There was an error updating your data!'
             }, exc_info=e), 500
+
