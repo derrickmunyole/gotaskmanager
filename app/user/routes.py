@@ -42,12 +42,6 @@ class UserLogin(Resource):
     @ns.response(400, 'Bad request', user_login_model)
     def post(self):
         try:
-            if current_user.is_authenticated:
-                return {
-                    'success': True,
-                    'message': 'You are already logged in!'
-                }, 200
-
             data = request.get_json()
             username = data.get('username')
             password = data.get('password')
