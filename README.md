@@ -32,6 +32,7 @@ Follow these steps to set up and run the backend locally:
 1. Clone the repository:
 
 `https://github.com/derrickmunyole/gotaskmanager`
+
 `cd gotaskmanager`
 
 2. Create a virtual environment:
@@ -39,6 +40,7 @@ Follow these steps to set up and run the backend locally:
 `python -m venv venv`
 
 `source venv/bin/activate  # On Windows use venv\Scripts\activate`
+
 3. Install dependencies
 
 `pip install -r requirements.txt`
@@ -52,6 +54,8 @@ Follow these steps to set up and run the backend locally:
 `flask db upgrade`
 
 6. Start the application
+
+`flask run`
 
 ## Usage
 
