@@ -29,33 +29,33 @@ Key features include:
 ## Installation
 
 Follow these steps to set up and run the backend locally:
-1. Clone the repository:
+- Clone the repository:
 
-`https://github.com/derrickmunyole/gotaskmanager`
+  - `https://github.com/derrickmunyole/gotaskmanager`
 
-`cd gotaskmanager`
+  - `cd gotaskmanager`
 
-2. Create a virtual environment:
+- Create a virtual environment:
 
-`python -m venv venv`
+  - `python -m venv venv`
 
-`source venv/bin/activate  # On Windows use venv\Scripts\activate`
+  - `source venv/bin/activate  # On Windows use venv\Scripts\activate`
 
-3. Install dependencies
+- Install dependencies
 
-`pip install -r requirements.txt`
+  - `pip install -r requirements.txt`
 
-4. Set up the database:
+- Set up the database:
 
-`DATABASE_URL=postgresql://username:password@localhost/gotaskmanager`
+  - `DATABASE_URL=postgresql://username:password@localhost/gotaskmanager`
 
-5. Run database migrations:
+- Run database migrations:
 
-`flask db upgrade`
+  - `flask db upgrade`
 
-6. Start the application
+- Start the application
 
-`flask run`
+  - `flask run`
 
 ## Usage
 
