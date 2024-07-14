@@ -2,6 +2,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
+from flask_restx import Api
 
 from config import Config
 
@@ -26,6 +27,8 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
     login.init_app(app)
 
+    api = Api(app, version='1.0', title='Task Management API', description='An API for a task manager application')
+
     from app.user import model as user_model
     from app.task import model as task_model
     from app.project import model as project_model
@@ -38,6 +41,9 @@ def create_app(config_class=Config):
 
     app.register_blueprint(user_bp, url_prefix='/user')
     app.register_blueprint(task_bp, url_prefix='/task')
+
+    from app.user.routes import ns as user_ns
+    api.add_namespace(user_ns, path='/user')
 
     return app
 
