@@ -46,6 +46,8 @@ Follow these steps to set up and run the backend locally:
   - `pip install -r requirements.txt`
 
 - Set up the database:
+  - Install postgres on your local system. 
+    Configure database creds and create the database (gotaskmanager in this case)
 
   - `DATABASE_URL=postgresql://username:password@localhost/gotaskmanager`
 
