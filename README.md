@@ -48,6 +48,9 @@ Follow these steps to set up and run the backend locally:
 - Set up the database:
   - Install postgres on your local system (Optionally, install pgadmin4). 
   - Using PgAdmin4 or the postgres cli, configure database creds and create the database (gotaskmanager in this case)
+  - Enter the code snippet below to your .env file at the project root (remember to create one) or use the export command in a 
+    linux terminal to add an environment variable. Be sure to replace username and password with your configured creds from
+    earlier
   
 
   - `DATABASE_URL=postgresql://username:password@localhost/gotaskmanager`
