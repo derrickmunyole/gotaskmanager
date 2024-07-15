@@ -43,7 +43,9 @@ def create_app(config_class=Config):
     app.register_blueprint(task_bp, url_prefix='/task')
 
     from app.user.routes import ns as user_ns
+    from app.task.routes import ns as task_ns
     api.add_namespace(user_ns, path='/user')
+    api.add_namespace(task_ns, path='task')
 
     return app
 
