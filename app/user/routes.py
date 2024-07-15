@@ -1,15 +1,19 @@
-import jwt
 import datetime
 import logging
+from functools import wraps
+
+import jwt
 from flask import Blueprint, request, jsonify, current_app
-from flask_login import current_user, login_user, login_required
+from flask_login import login_required
+from flask_restx import Namespace, Resource, fields
 from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.exceptions import BadRequest
 from werkzeug.security import generate_password_hash
-from flask_restx import Namespace, Resource, fields
 
 from .model import User
 from .. import db
+
+refresh_tokens = {}  # TODO: This should be a persistent store in production
 
 logger = logging.getLogger(__name__)
 bp = Blueprint('user', __name__)
@@ -31,6 +35,26 @@ user_update_model = ns.model('UserUpdate', {
     'email': fields.String(description='The email'),
     'password': fields.String(description='The password')
 })
+
+user_logout_model = ns.model('UserLogout', {
+    'refresh_token': fields.String(required=True, description='Refresh Token')
+})
+
+
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization', None)
+        if not token:
+            return jsonify({'message': 'Token is missing!'}), 403
+        try:
+            data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
+            current_user = data['user']
+        except Exception as e:
+            return jsonify({'message': str(e)}), 403
+        return f(current_user, *args, **kwargs)
+
+    return decorated
 
 
 @ns.route('/login')
@@ -59,15 +83,23 @@ class UserLogin(Resource):
                     'message': 'Incorrect password. Please try again.'
                 }, 401
 
-            jwt_token = jwt.encode({
+            access_token = jwt.encode({
                 'user_id': user.id,
                 'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)
             }, current_app.config['SECRET_KEY'], algorithm='HS256')
 
+            refresh_token = jwt.encode({
+                'user_id': 1,
+                'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=30)
+            }, current_app.config['REFRESH_SECRET_KEY'], algorithm='HS256')
+
+            refresh_tokens[refresh_token] = 1
+
             return {
                 'success': True,
                 'message': 'Logged in successfully!',
-                'token': jwt_token
+                'access_token': access_token,
+                'refresh_token': refresh_token
             }, 200
         except BadRequest as e:
             return {
@@ -203,3 +235,22 @@ class UpdateUser(Resource):
                 'message': 'There was an error updating your data!'
             }, exc_info=e), 500
 
+
+@ns.route('/logout')
+class UserLogout(Resource):
+    @ns.expect(user_logout_model)
+    @ns.response(200, 'Logged out successfully', user_logout_model)
+    @ns.response(400, 'Bad request', user_logout_model)
+    @ns.response(401, 'Logout failed', user_logout_model)
+    @ns.response(500, 'Internal server error', user_logout_model)
+    @token_required
+    def post(self, current_user):
+        try:
+            data = request.get_json()
+            refresh_token = data.get('refresh_token')
+            if refresh_token in refresh_tokens:
+                del refresh_tokens[refresh_token]
+                return jsonify({'message': 'Logged out successfully!'}), 200
+            return jsonify({'message': 'Invalid refresh token!'}), 400
+        except Exception as e:
+            return jsonify({'message': 'There was an error while trying to log out: {}'.format(e)}), 500
