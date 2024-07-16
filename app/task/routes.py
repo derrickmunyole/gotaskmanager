@@ -141,7 +141,7 @@ class TaskList(Resource):
             return {'success': False, 'error': str(e)}, 500
 
 
-@ns.route('/tasks/<int:task_id>')
+@ns.route('/<int:task_id>')
 class TaskUpdate(Resource):
     @ns.expect(task_update_model)
     @ns.response(200, 'Ok', task_update_response)
@@ -210,7 +210,7 @@ class TaskResource(Resource):
             ns.abort(500, f"An error occurred while deleting the task: {str(e)}")
 
 
-@ns.route('/tasks/<int:task_id>/tags')
+@ns.route('/<int:task_id>/tags')
 class TaskTags(Resource):
     @ns.expect(tag_ids_model)
     @ns.response(200, 'Tags updated successfully')
@@ -242,7 +242,7 @@ class TaskTags(Resource):
             ns.abort(500, 'An error occurred while assigning tags')
 
 
-@ns.route('/tasks/<int:task_id/assign')
+@ns.route('/<int:task_id>/assign')
 class TaskAssignToProject(Resource):
     @ns.doc(params={'task_id': 'The task ID'})
     @ns.expect(task_assign_project_model)
@@ -302,7 +302,7 @@ class TaskAssignToProject(Resource):
             }, HTTPStatus.INTERNAL_SERVER_ERROR
 
 
-@ns.route('/tasks/<int:task_id>/comments')
+@ns.route('/<int:task_id>/comments')
 class TaskComments(Resource):
     @ns.expect(comment_input_model)
     @ns.response(HTTPStatus.CREATED, 'Created', task_comment_model)
@@ -353,7 +353,7 @@ class TaskComments(Resource):
             }, 500
 
 
-@ns.route('/tasks/<int:task_id>/assign_user')
+@ns.route('/<int:task_id>/assign_user')
 class TaskAssignUser(Resource):
     @ns.doc(params={'task_id': 'The task ID'})
     @ns.expect(task_assign_user_model)
@@ -395,7 +395,7 @@ class TaskAssignUser(Resource):
                 'data': {
                     'task_id': task.id,
                     'user_id': user.id,
-                    'user_name': user.name
+                    'user_name': user.full_name
                 }
             }, HTTPStatus.OK
 
