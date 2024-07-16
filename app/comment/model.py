@@ -4,7 +4,7 @@ from app import db
 
 
 class Comment(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     content = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     task_id = db.Column(db.Integer, db.ForeignKey('task.id'))
