@@ -65,8 +65,18 @@ comment_input_model = ns.model('TaskComments', {
     'content': fields.String(),
 })
 
-task_comment_model = ns.model('TaskComments', {
+task_comment_model = ns.model('TaskComment', {
+    'id': fields.Integer(description='The unique identifier of the comment'),
+    'content': fields.String(description='The content of the comment'),
+    'created_at': fields.DateTime(description='The timestamp when the comment was created'),
+    'task_id': fields.Integer(description='The ID of the task this comment belongs to'),
+    'user_id': fields.Integer(description='The ID of the user who created the comment'),
+})
 
+task_comment_response_model = ns.model('TaskComments', {
+    'success': fields.Boolean(description='Indicates if the request was successful'),
+    'message': fields.String(description='A message describing the result'),
+    'comment': fields.Nested(task_comment_model, description='The created comment')
 })
 
 task_assign_user_model = ns.model('TaskAssignToUser', {
@@ -305,7 +315,7 @@ class TaskAssignToProject(Resource):
 @ns.route('/<int:task_id>/comments')
 class TaskComments(Resource):
     @ns.expect(comment_input_model)
-    @ns.response(HTTPStatus.CREATED, 'Created', task_comment_model)
+    @ns.response(HTTPStatus.CREATED, 'Created', task_comment_response_model)
     @ns.response(HTTPStatus.BAD_REQUEST, 'Bad Request')
     @ns.response(HTTPStatus.NOT_FOUND, 'Not found')
     @ns.response(HTTPStatus.INTERNAL_SERVER_ERROR, 'Internal server error')
