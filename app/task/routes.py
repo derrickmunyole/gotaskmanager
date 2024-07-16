@@ -14,7 +14,7 @@ from ..comment.model import Comment
 from ..user.model import User
 
 bp = Blueprint('task', __name__)
-ns = Namespace('task', path='task')
+ns = Namespace('task', description='Task related operations')
 logger = logging.getLogger(__name__)
 
 task_model = ns.model('Task', {
@@ -84,19 +84,19 @@ task_assign_user_model = ns.model('TaskAssignToUser', {
 })
 
 
-@ns.route('/tasks')
+@ns.route('/')
 class TaskList(Resource):
     @ns.marshal_with(task_list_response)  # Response is automatically serialized according to the
     # defined model.
-    @ns.response(200, 'Ok', task_list_response)
-    @ns.response(500, 'Internal server error')
+    @ns.response(HTTPStatus.OK, 'Ok', task_list_response)
+    @ns.response(HTTPStatus.INTERNAL_SERVER_ERROR, 'Internal server error')
     def get(self):
         try:
             tasks = Task.query.all()
 
             return {
                 'success': True,
-                'tasks': [task.to_dict() for task in tasks]
+                'tasks': tasks
             }, 200
         except SQLAlchemyError as e:
             logger.error("Database error while fetching tasks", exc_info=True)
@@ -111,9 +111,10 @@ class TaskList(Resource):
                 'error': "An unexpected error occurred. Please try again later."
             }, 500
 
+    @ns.marshal_with(task_create_response)
     @ns.expect(task_model)
-    @ns.response(201, 'Created', task_model)
-    @ns.response(500, 'Internal server error')
+    @ns.response(HTTPStatus.CREATED, 'Created', task_model)
+    @ns.response(HTTPStatus.INTERNAL_SERVER_ERROR, 'Internal server error')
     def post(self):
         try:
             data = request.get_json()
@@ -137,7 +138,7 @@ class TaskList(Resource):
             return {
                 'success': True,
                 'message': 'Task created successfully',
-                'task': new_task.to_dict()
+                'task': new_task
             }, 201
         except SQLAlchemyError as e:
             db.session.rollback()
@@ -151,12 +152,13 @@ class TaskList(Resource):
             return {'success': False, 'error': str(e)}, 500
 
 
-@ns.route('/<int:task_id>')
+@ns.route('/update/<int:task_id>')
 class TaskUpdate(Resource):
+    @ns.marshal_with(task_update_response)
     @ns.expect(task_update_model)
-    @ns.response(200, 'Ok', task_update_response)
-    @ns.response(404, 'Not found')
-    @ns.response(500, 'Internal server error')
+    @ns.response(HTTPStatus.OK, 'Ok')
+    @ns.response(HTTPStatus.NOT_FOUND, 'Not found')
+    @ns.response(HTTPStatus.INTERNAL_SERVER_ERROR, 'Internal server error')
     def put(self, task_id):
         try:
             task = Task.query.get(task_id)
@@ -180,7 +182,7 @@ class TaskUpdate(Resource):
             return {
                 'success': True,
                 'message': 'Task updated successfully',
-                'task': task.to_dict()
+                'task': task
             }, 200
         except SQLAlchemyError as e:
             db.session.rollback()
@@ -197,7 +199,7 @@ class TaskUpdate(Resource):
             }, 500
 
 
-@ns.route('/<int:task_id>')
+@ns.route('/delete/<int:task_id>')
 class TaskResource(Resource):
     @ns.response(HTTPStatus.NO_CONTENT, 'No Content')
     @ns.response(HTTPStatus.NOT_FOUND, 'Not found')
@@ -223,10 +225,10 @@ class TaskResource(Resource):
 @ns.route('/<int:task_id>/tags')
 class TaskTags(Resource):
     @ns.expect(tag_ids_model)
-    @ns.response(200, 'Tags updated successfully')
-    @ns.response(404, 'Task not found')
-    @ns.response(400, 'Invalid request')
-    @ns.response(500, 'Internal server error')
+    @ns.response(HTTPStatus.OK, 'Tags updated successfully')
+    @ns.response(HTTPStatus.NOT_FOUND, 'Task not found')
+    @ns.response(HTTPStatus.BAD_REQUEST, 'Invalid request')
+    @ns.response(HTTPStatus.INTERNAL_SERVER_ERROR, 'Internal server error')
     def post(self, task_id):
         try:
             data = ns.payload
