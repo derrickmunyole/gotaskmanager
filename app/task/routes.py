@@ -97,19 +97,19 @@ class TaskList(Resource):
             return {
                 'success': True,
                 'tasks': tasks
-            }, 200
+            }, HTTPStatus.OK
         except SQLAlchemyError as e:
             logger.error("Database error while fetching tasks", exc_info=True)
             return {
                 'success': False,
                 'error': "Database error occurred. Please try again later."
-            }, 500
+            }, HTTPStatus.INTERNAL_SERVER_ERROR
         except Exception as e:
             logger.error("Unexpected error while fetching tasks", exc_info=True)
             return {
                 'success': False,
                 'error': "An unexpected error occurred. Please try again later."
-            }, 500
+            }, HTTPStatus.INTERNAL_SERVER_ERROR
 
     @ns.marshal_with(task_create_response)
     @ns.expect(task_model)
@@ -125,7 +125,7 @@ class TaskList(Resource):
                 return {
                     'success': False,
                     'error': 'Title is required'
-                }, 400
+                }, HTTPStatus.BAD_REQUEST
 
             new_task = Task(
                 title=title,
@@ -139,17 +139,20 @@ class TaskList(Resource):
                 'success': True,
                 'message': 'Task created successfully',
                 'task': new_task
-            }, 201
+            }, HTTPStatus.CREATED
         except SQLAlchemyError as e:
             db.session.rollback()
             logger.error("Database error while creating new task", exc_info=True)
             return {
                 'success': False,
                 'error': "Database error occurred. Please try again later."
-            }, 500
+            }, HTTPStatus.INTERNAL_SERVER_ERROR
         except Exception as e:
             logger.info("Error creating new task", exc_info=e)
-            return {'success': False, 'error': str(e)}, 500
+            return {
+                'success': False,
+                'error': str(e)
+            }, HTTPStatus.INTERNAL_SERVER_ERROR
 
 
 @ns.route('/update/<int:task_id>')
@@ -164,7 +167,11 @@ class TaskUpdate(Resource):
             task = Task.query.get(task_id)
 
             if task is None:
-                return jsonify({'success': False, 'message': 'Not found'}), 404
+                return jsonify(
+                    {
+                        'success': False,
+                        'message': 'Not found'
+                    }), HTTPStatus.NOT_FOUND
 
             data = request.get_json()
 
@@ -176,27 +183,26 @@ class TaskUpdate(Resource):
                 return {
                     'success': False,
                     'message': 'Title cannot be empty'
-                }, 400
+                }, HTTPStatus.BAD_REQUEST
 
             db.session.commit()
             return {
                 'success': True,
                 'message': 'Task updated successfully',
                 'task': task
-            }, 200
+            }, HTTPStatus.OK
         except SQLAlchemyError as e:
             db.session.rollback()
             logger.error("Database error while updating task", exc_info=True)
             return {
                 'success': False,
                 'message': "Database error occurred. Please try again later."
-            }, 500
+            }, HTTPStatus.INTERNAL_SERVER_ERROR
         except Exception as e:
             logger.error("Error updating task", exc_info=e)
             return {
                 'success': False,
-                'error': str(e)
-            }, 500
+            }, HTTPStatus.INTERNAL_SERVER_ERROR
 
 
 @ns.route('/delete/<int:task_id>')
@@ -211,15 +217,21 @@ class TaskResource(Resource):
             db.session.delete(task)
             db.session.commit()
 
-            return '', 204
+            return '', HTTPStatus.NO_CONTENT
 
         except NotFound:
-            ns.abort(404, f"Task with id {task_id} not found")
+            ns.abort(
+                HTTPStatus.NOT_FOUND,
+                f"Task with id {task_id} not found"
+            )
 
         except Exception as e:
             db.session.rollback()
             logger.error(f"Error deleting task with id {task_id}", exc_info=True)
-            ns.abort(500, f"An error occurred while deleting the task: {str(e)}")
+            ns.abort(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                f"An error occurred while deleting the task: {str(e)}"
+            )
 
 
 @ns.route('/<int:task_id>/tags')
@@ -235,7 +247,10 @@ class TaskTags(Resource):
             tag_ids = data.get('tag_ids', [])
 
             if not isinstance(tag_ids, list):
-                ns.abort(400, 'tag_ids must be a list of integers')
+                ns.abort(
+                    HTTPStatus.BAD_REQUEST,
+                    'tag_ids must be a list of integers'
+                )
 
             task = Task.query.get_or_404(task_id)
 
@@ -243,15 +258,23 @@ class TaskTags(Resource):
 
             # Check if all provided tag_ids exist
             if len(tags) != len(tag_ids):
-                ns.abort(400, 'One or more tag IDs are invalid')
+                ns.abort(
+                    HTTPStatus.BAD_REQUEST,
+                    'One or more tag IDs are invalid'
+                )
 
             task.tags = tags
             db.session.commit()
 
-            return {'message': 'Tags updated successfully'}, 200
+            return {
+                'message': 'Tags updated successfully'
+            }, HTTPStatus.OK
         except Exception as e:
             logger.error(f"Error assigning tags to task: {str(e)}", exc_info=True)
-            ns.abort(500, 'An error occurred while assigning tags')
+            ns.abort(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                'An error occurred while assigning tags'
+            )
 
 
 @ns.route('/<int:task_id>/assign')
@@ -278,14 +301,14 @@ class TaskAssignToProject(Resource):
                 return {
                     'success': False,
                     'message': 'Task not found'
-                }, 404
+                }, HTTPStatus.NOT_FOUND
 
             project = Project.query.get(project_id)
             if not project:
                 return {
                     'success': False,
                     'message': 'Project not found'
-                }, 404
+                }, HTTPStatus.NOT_FOUND
 
             task.project = project
             db.session.commit()
@@ -302,15 +325,13 @@ class TaskAssignToProject(Resource):
             db.session.rollback()
             return {
                 'success': False,
-                'message': 'A database error occurred while assigning the task to the project',
-                'error': str(e)
+                'message': 'A database error occurred while assigning the task to the project'
             }, HTTPStatus.INTERNAL_SERVER_ERROR
         except Exception as e:
             db.session.rollback()
             return {
                 'success': False,
-                'message': 'An error occurred while assigning the task to the project',
-                'error': str(e)
+                'message': 'An error occurred while assigning the task to the project'
             }, HTTPStatus.INTERNAL_SERVER_ERROR
 
 
@@ -331,14 +352,14 @@ class TaskComments(Resource):
                 return {
                     'success': False,
                     'message': 'Comment content cannot be empty'
-                }, 400
+                }, HTTPStatus.BAD_REQUEST
 
             task = Task.query.get(task_id)
             if not task:
                 return {
                     'success': False,
                     'message': 'Task not found'
-                }, 404
+                }, HTTPStatus.BAD_REQUEST
 
             new_comment = Comment(content=content, task=task)
             db.session.add(new_comment)
@@ -348,22 +369,20 @@ class TaskComments(Resource):
                 'success': True,
                 'message': 'Comment added successfully',
                 'comment': new_comment
-            }, 201
+            }, HTTPStatus.CREATED
         except SQLAlchemyError as e:
             db.session.rollback()
             return {
                 'success': False,
-                'message': 'A database error occurred while adding comment',
-                'error': str(e)
+                'message': 'A database error occurred while adding comment'
             }, HTTPStatus.INTERNAL_SERVER_ERROR
 
         except Exception as e:
             db.session.rollback()
             return {
                 'success': False,
-                'message': 'An error occurred while adding the comment',
-                'error': str(e)
-            }, 500
+                'message': 'An error occurred while adding the comment'
+            }, HTTPStatus.INTERNAL_SERVER_ERROR
 
 
 @ns.route('/<int:task_id>/assign_user')
@@ -416,15 +435,13 @@ class TaskAssignUser(Resource):
             db.session.rollback()
             return {
                 'success': False,
-                'message': 'A database error occurred while assigning the task',
-                'error': str(e)
+                'message': 'A database error occurred while assigning the task'
             }, HTTPStatus.INTERNAL_SERVER_ERROR
         except Exception as e:
             db.session.rollback()
             return {
                 'success': False,
-                'message': 'An error occurred while assigning the task',
-                'error': str(e)
+                'message': 'An error occurred while assigning the task'
             }, HTTPStatus.INTERNAL_SERVER_ERROR
 
 
