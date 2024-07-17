@@ -6,9 +6,10 @@ import jwt
 from flask import Blueprint, request, jsonify, current_app
 from flask_login import login_required
 from flask_restx import Namespace, Resource, fields
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from werkzeug.exceptions import BadRequest
 from werkzeug.security import generate_password_hash
+from http import HTTPStatus
 
 from .model import User
 from .. import db
@@ -46,12 +47,12 @@ def token_required(f):
     def decorated(*args, **kwargs):
         token = request.headers.get('Authorization', None)
         if not token:
-            return jsonify({'message': 'Token is missing!'}), 403
+            return jsonify({'message': 'Token is missing!'}), HTTPStatus.FORBIDDEN
         try:
             data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
             current_user = data['user']
         except Exception as e:
-            return jsonify({'message': str(e)}), 403
+            return jsonify({'message': str(e)}), HTTPStatus.FORBIDDEN
         return f(current_user, *args, **kwargs)
 
     return decorated
@@ -60,10 +61,10 @@ def token_required(f):
 @ns.route('/login')
 class UserLogin(Resource):
     @ns.expect(user_login_model)
-    @ns.response(200, 'Success', user_login_model)
-    @ns.response(401, 'Login failed', user_login_model)
-    @ns.response(500, 'Internal server error')
-    @ns.response(400, 'Bad request', user_login_model)
+    @ns.response(HTTPStatus.OK, 'Success', user_login_model)
+    @ns.response(HTTPStatus.UNAUTHORIZED, 'Login failed', user_login_model)
+    @ns.response(HTTPStatus.INTERNAL_SERVER_ERROR, 'Internal server error')
+    @ns.response(HTTPStatus.BAD_REQUEST, 'Bad request', user_login_model)
     def post(self):
         try:
             data = request.get_json()
@@ -75,13 +76,13 @@ class UserLogin(Resource):
                 return {
                     'success': False,
                     'message': 'User not found. Please register first.'
-                }, 404
+                }, HTTPStatus.NOT_FOUND
 
             if not user.check_password(password):
                 return {
                     'success': False,
                     'message': 'Incorrect password. Please try again.'
-                }, 401
+                }, HTTPStatus.UNAUTHORIZED
 
             access_token = jwt.encode({
                 'user_id': user.id,
@@ -100,50 +101,58 @@ class UserLogin(Resource):
                 'message': 'Logged in successfully!',
                 'access_token': access_token,
                 'refresh_token': refresh_token
-            }, 200
+            }, HTTPStatus.OK
         except BadRequest as e:
             return {
                 'success': False,
                 'message': 'Invalid request: {}'.format(e)
-            }, 400
+            }, HTTPStatus.BAD_REQUEST
         except Exception as e:
             return {
                 'success': False,
                 'message': 'There was an error while trying to log in: {}'.format(e)
-            }, 500
+            }, HTTPStatus.INTERNAL_SERVER_ERROR
 
 
 @ns.route('/register')
 class UserRegister(Resource):
     @ns.expect(user_register_model)
-    @ns.response(200, 'Registration successful', user_register_model)
-    @ns.response(500, 'Internal server error', user_register_model)
-    @ns.response(400, 'Bad request', user_register_model)
-    @ns.response(401, 'Registration failed', user_register_model)
+    @ns.response(HTTPStatus.CREATED, 'Registration successful')
+    @ns.response(HTTPStatus.CONFLICT, 'User already exists')
+    @ns.response(HTTPStatus.BAD_REQUEST, 'Bad request')
+    @ns.response(HTTPStatus.INTERNAL_SERVER_ERROR, 'Internal server error')
     def post(self):
         try:
             data = request.get_json()
             username = data.get('username')
+            first_name = data.get('first_name')
+            last_name = data.get('last_name')
             email = data.get('email')
             password = data.get('password')
 
-            if User.query.filter_by(username=username).first():
-                return jsonify({
+            if not all([username, first_name, last_name, email, password]):
+                return {
                     'success': False,
-                    'message': 'User already exists!'
-                }), 401
+                    'message': 'Missing required fields'
+                }, HTTPStatus.BAD_REQUEST
 
-            if User.query.filter_by(email=email).first():
-                return jsonify({
+            existing_user = User.query.filter(
+                (User.username == username) | (User.email == email)
+            ).first()
+
+            if existing_user:
+                return {
                     'success': False,
-                    'message': 'Email already exists!'
-                }), 401
+                    'message': 'Username or email already exists'
+                }, HTTPStatus.CONFLICT
 
             new_user = User(
+                first_name=first_name,
+                last_name=last_name,
                 username=username,
-                email=email,
-                password_hash=generate_password_hash(password)
+                email=email
             )
+            new_user.set_password(password)
 
             db.session.add(new_user)
             db.session.commit()
@@ -151,24 +160,28 @@ class UserRegister(Resource):
             return {
                 'success': True,
                 'message': 'Registered successfully!'
-            }, 201
+            }, HTTPStatus.CREATED
+
         except BadRequest as e:
             return {
                 'success': False,
-                'message': 'Invalid request: {}'.format(e)
-            }, 400
+                'message': f'Invalid request: {str(e)}'
+            }, HTTPStatus.BAD_REQUEST
+
         except SQLAlchemyError as e:
-            db.session.rollback()
+            logger.error("Database error while registering user", exc_info=True)
             return {
                 'success': False,
-                'message': 'Database error: {}'.format(e)
+                'error': "Database error occurred. Please try again later."
+            }, HTTPStatus.INTERNAL_SERVER_ERROR
 
-            }, 500
         except Exception as e:
-            logger.error({
+            db.session.rollback()
+            current_app.logger.error(f'Registration error: {str(e)}')
+            return {
                 'success': False,
-                'message': 'Something went wrong: {}'.format(e)
-            }), 500
+                'message': 'An unexpected error occurred'
+            }, HTTPStatus.INTERNAL_SERVER_ERROR
 
 
 @ns.route('/update')
