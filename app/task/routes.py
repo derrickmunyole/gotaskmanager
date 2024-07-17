@@ -13,7 +13,7 @@ from ..project.model import Project
 from ..comment.model import Comment
 from ..user.model import User
 
-bp = Blueprint('task', __name__)
+
 ns = Namespace('task', description='Task related operations')
 logger = logging.getLogger(__name__)
 
@@ -314,9 +314,10 @@ class TaskAssignToProject(Resource):
             }, HTTPStatus.INTERNAL_SERVER_ERROR
 
 
-@ns.route('/<int:task_id>/comments')
+@ns.route('/<int:task_id>/comment')
 class TaskComments(Resource):
     @ns.expect(comment_input_model)
+    @ns.marshal_with(task_comment_response_model)
     @ns.response(HTTPStatus.CREATED, 'Created', task_comment_response_model)
     @ns.response(HTTPStatus.BAD_REQUEST, 'Bad Request')
     @ns.response(HTTPStatus.NOT_FOUND, 'Not found')
