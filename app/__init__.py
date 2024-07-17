@@ -6,7 +6,6 @@ from flask_restx import Api
 
 from config import Config
 
-
 db = SQLAlchemy()
 migrate = Migrate()
 login = LoginManager()
@@ -36,11 +35,6 @@ def create_app(config_class=Config):
     from app.task_tags import model as task_tag_model
     from app.subtask import model as subtask_model
     from app.comment import model as comment_model
-    from app.user.routes import bp as user_bp
-    from app.task.routes import bp as task_bp
-
-    app.register_blueprint(user_bp, url_prefix='/user')
-    app.register_blueprint(task_bp, url_prefix='/task')
 
     from app.user.routes import ns as user_ns
     from app.task.routes import ns as task_ns
@@ -52,4 +46,3 @@ def create_app(config_class=Config):
     api.add_namespace(comments_ns, path='/comment')
 
     return app
-
