@@ -45,9 +45,11 @@ def create_app(config_class=Config):
     from app.user.routes import ns as user_ns
     from app.task.routes import ns as task_ns
     from app.project.routes import project_ns
+    from app.comment.routes import comments_ns
     api.add_namespace(user_ns, path='/user')
     api.add_namespace(task_ns, path='/task')
     api.add_namespace(project_ns, path='/project')
+    api.add_namespace(comments_ns, path='/comment')
 
     return app
 
