@@ -3,13 +3,14 @@ import logging
 from functools import wraps
 
 import jwt
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, make_response
 from flask_login import login_required
 from flask_restx import Namespace, Resource, fields
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from werkzeug.exceptions import BadRequest
 from werkzeug.security import generate_password_hash
 from http import HTTPStatus
+from cryptography.fernet import Fernet
 
 from .model import User
 from .. import db
@@ -68,10 +69,10 @@ class UserLogin(Resource):
     def post(self):
         try:
             data = request.get_json()
-            username = data.get('username')
+            email = data.get('email')
             password = data.get('password')
 
-            user = User.query.filter_by(username=username).first()
+            user = User.query.filter_by(email=email).first()
             if user is None:
                 return {
                     'success': False,
@@ -89,19 +90,33 @@ class UserLogin(Resource):
                 'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)
             }, current_app.config['SECRET_KEY'], algorithm='HS256')
 
+            fernet_key = Fernet(current_app.config['SECRET_KEY'].encode())
+            encrypted_token = fernet_key.encrypt(access_token.encode())
+
             refresh_token = jwt.encode({
                 'user_id': 1,
                 'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=30)
             }, current_app.config['REFRESH_SECRET_KEY'], algorithm='HS256')
 
-            refresh_tokens[refresh_token] = 1
+            encrypted_refresh_token = fernet_key.encrypt(refresh_token.encode())
 
-            return {
+            refresh_tokens[refresh_token] = user.id
+
+            response = make_response({
                 'success': True,
-                'message': 'Logged in successfully!',
-                'access_token': access_token,
-                'refresh_token': refresh_token
-            }, HTTPStatus.OK
+                'message': 'Successfully logged in.',
+                refresh_token: encrypted_refresh_token
+            })
+
+            response.set_cookie(
+                'access_token',
+                str(encrypted_token),
+                httponly=True,
+                secure=True,
+                samesite='Strict',
+                max_age=1800
+
+            )
         except BadRequest as e:
             return {
                 'success': False,
