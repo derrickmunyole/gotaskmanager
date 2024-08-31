@@ -1,18 +1,17 @@
 import logging
+from http import HTTPStatus
 
-from flask import Blueprint, request, jsonify
+from flask import request, jsonify
 from flask_restx import Namespace, Resource, fields
 from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.exceptions import NotFound
-from http import HTTPStatus
 
 from app import db
 from app.tag.model import Tag
 from .model import Task
-from ..project.model import Project
 from ..comment.model import Comment
+from ..project.model import Project
 from ..user.model import User
-
 
 ns = Namespace('task', description='Task related operations')
 logger = logging.getLogger(__name__)
@@ -443,5 +442,3 @@ class TaskAssignUser(Resource):
                 'success': False,
                 'message': 'An error occurred while assigning the task'
             }, HTTPStatus.INTERNAL_SERVER_ERROR
-
-

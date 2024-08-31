@@ -12,6 +12,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), index=True)
     password_hash = db.Column(db.Text)
     tasks = db.relationship('Task', back_populates="assignee", lazy='dynamic')
+    refresh_tokens = db.relationship('RefreshToken', back_populates='user', lazy='dynamic')
 
     @property
     def full_name(self):
