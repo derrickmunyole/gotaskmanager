@@ -421,20 +421,6 @@ class RefreshTokenResource(Resource):
             return {'error': 'An error occurred while refreshing the token'}, 500
 
 
-@ns.route('/check-auth')
-class CheckAuth(Resource):
-    @ns.response(HTTPStatus.OK, 'Success')
-    @ns.response(HTTPStatus.UNAUTHORIZED, 'Unauthorized')
-    @ns.response(HTTPStatus.INTERNAL_SERVER_ERROR, 'Internal server error')
-    @token_required
-    def get(self, current_user):
-        try:
-            return {'isAuthenticated': True}, HTTPStatus.OK
-        except Exception as e:
-            current_app.logger.error(f"Unexpected error checking auth: {str(e)}")
-            return {'isAuthenticated': False}, HTTPStatus.INTERNAL_SERVER_ERROR
-
-
 @ns.route('/info')
 class UserInfo(Resource):
     @token_required
