@@ -39,15 +39,15 @@ jobs:
         aws-region: eu-north-1
 
     - name: Debug SSH
+      env:
+        EC2_HOST: ${{ secrets.EC2_HOST }}
+        EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
+        EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
       run: |
         echo "Checking SSH connection..."
         ssh -v -i ec2_ssh_key.pem -o StrictHostKeyChecking=no $EC2_USERNAME@$EC2_HOST echo "SSH connection successful"
 
     - name: Deploy to EC2
-      env:
-        EC2_HOST: ${{ secrets.EC2_HOST }}
-        EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
-        EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
       run: |
           echo "Starting deployment to EC2..."
           set -e
