@@ -10,21 +10,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:13
-        env:
-          POSTGRES_DB: test_db
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
     - uses: actions/checkout@v2
 
@@ -41,11 +26,11 @@ jobs:
     - name: Run migrations
       env:
         FLASK_ENV: testing
-        TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+        TEST_DATABASE_URL: sqlite:///test.db
       run: flask db upgrade
 
     - name: Run tests
       env:
         FLASK_ENV: testing
-        TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+        TEST_DATABASE_URL: sqlite:///test.db
       run: pytest
