@@ -38,22 +38,20 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: eu-north-1
 
-    - name: Debug SSH
+    - name: Deploy to EC2
       env:
         EC2_HOST: ${{ secrets.EC2_HOST }}
         EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
         EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
-      run: |
-        echo "Checking SSH connection..."
-        ssh -v -i ec2_ssh_key.pem -o StrictHostKeyChecking=no $EC2_USERNAME@$EC2_HOST echo "SSH connection successful"
-
-    - name: Deploy to EC2
       run: |
           echo "Starting deployment to EC2..."
           set -e
           # Write the SSH key to a file
           echo "$EC2_SSH_KEY" > ec2_ssh_key.pem
           chmod 600 ec2_ssh_key.pem
+        
+         echo "Checking SSH connection..."
+         ssh -v -i ec2_ssh_key.pem -o StrictHostKeyChecking=no $EC2_USERNAME@$EC2_HOST echo "SSH connection successful"
         
           # SSH into the EC2 instance and run deployment commands
           ssh -i ec2_ssh_key.pem $EC2_USERNAME@$EC2_HOST << EOF
