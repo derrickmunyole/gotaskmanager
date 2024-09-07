@@ -27,10 +27,12 @@ jobs:
       env:
         FLASK_ENV: testing
         TEST_DATABASE_URL: sqlite:///test.db
+        FERNET_KEY: ${{ secrets.FERNET_KEY }}
       run: flask db upgrade
 
     - name: Run tests
       env:
         FLASK_ENV: testing
         TEST_DATABASE_URL: sqlite:///test.db
+        FERNET_KEY: ${{ secrets.FERNET_KEY }}
       run: pytest
