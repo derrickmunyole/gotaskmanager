@@ -10,9 +10,8 @@ class Config:
     REFRESH_SECRET_KEY = os.environ.get('REFRESH_SECRET_KEY') or 'super-secret-refresh_key'
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'postgresql://localhost:5432'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    FLASK_ENV=os.environ.get('FLASK_ENV')
 
 
 class TestConfig(Config):
-    TESTING = True
     SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URL') or 'postgresql://localhost:5432/test_db'
-

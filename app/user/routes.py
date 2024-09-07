@@ -114,8 +114,11 @@ class UserLogin(Resource):
             email = data.get('email')
             password = data.get('password')
 
+            current_app.logger.info(f"Login attempt for email: {email}")
+
             user = User.query.filter_by(email=email).first()
             if user is None:
+                current_app.logger.warning(f"User not found for email: {email}")
                 return {
                     'success': False,
                     'message': 'User not found. Please register first.'
@@ -230,22 +233,16 @@ class UserRegister(Resource):
                 'message': 'Registered successfully!'
             }, HTTPStatus.CREATED
 
-        except BadRequest as e:
-            return {
-                'success': False,
-                'message': f'Invalid request: {str(e)}'
-            }, HTTPStatus.BAD_REQUEST
-
         except SQLAlchemyError as e:
-            logger.error("Database error while registering user", exc_info=True)
+            db.session.rollback()
+            current_app.logger.error(f"Database error while registering user: {str(e)}", exc_info=True)
             return {
                 'success': False,
                 'error': "Database error occurred. Please try again later."
             }, HTTPStatus.INTERNAL_SERVER_ERROR
-
         except Exception as e:
             db.session.rollback()
-            current_app.logger.error(f'Registration error: {str(e)}')
+            current_app.logger.error(f'Registration error: {str(e)}', exc_info=True)
             return {
                 'success': False,
                 'message': 'An unexpected error occurred'

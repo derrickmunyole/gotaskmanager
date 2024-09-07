@@ -1,10 +1,12 @@
+import os
+
 from flask import Flask, request
 from flask_migrate import Migrate
 from flask_restx import Api
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 
-from config import Config
+from config import Config, TestConfig
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -12,7 +14,10 @@ migrate = Migrate()
 
 def create_app(config_class=Config):
     app = Flask(__name__)
-    app.config.from_object(config_class)
+    if os.environ.get('FLASK_ENV') == 'testing':
+        app.config.from_object(TestConfig)
+    else:
+        app.config.from_object(Config)
 
     db.init_app(app)
     migrate.init_app(app, db)
