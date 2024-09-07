@@ -1,59 +1,60 @@
+---
 name: Deploy Flask Backend to AWS
-
 on:
   push:
     branches:
       - main
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.12'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-
-    - name: Set up environment variables
-      env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        FERNET_KEY: ${{ secrets.FERNET_KEY }}
-      run: |
-        echo "DATABASE_URL=$DATABASE_URL" >> $GITHUB_ENV
-        echo "FERNET_KEY=$FERNET_KEY" >> $GITHUB_ENV
-
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: eu-north-1
-
-    - name: Deploy to EC2
-      env:
-        EC2_HOST: ${{ secrets.EC2_HOST }}
-        EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
-        EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
-      run: |
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Set up environment variables
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          FERNET_KEY: ${{ secrets.FERNET_KEY }}
+        run: |
+          echo "DATABASE_URL=$DATABASE_URL" >> $GITHUB_ENV
+          echo "FERNET_KEY=$FERNET_KEY" >> $GITHUB_ENV
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-north-1
+      - name: Deploy to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: >
           echo "Starting deployment to EC2..."
+
           set -e
+
           # Write the SSH key to a file
+
           echo "$EC2_SSH_KEY" > ec2_ssh_key.pem
+
           chmod 600 ec2_ssh_key.pem
-        
-         echo "Checking SSH connection..."
-         ssh -v -i ec2_ssh_key.pem -o StrictHostKeyChecking=no $EC2_USERNAME@$EC2_HOST echo "SSH connection successful"
-        
+
+
+          echo "Checking SSH connection..."
+
+          ssh -v -i ec2_ssh_key.pem -o StrictHostKeyChecking=no $EC2_USERNAME@$EC2_HOST echo "SSH connection successful"
+
+
           # SSH into the EC2 instance and run deployment commands
+
           ssh -i ec2_ssh_key.pem $EC2_USERNAME@$EC2_HOST << EOF
             # Check if the application directory exists
             if [ ! -d "/var/www/myapp" ]; then
@@ -69,11 +70,15 @@ jobs:
             # Remove old files (except for the virtual environment)
             find /var/www/myapp -mindepth 1 -maxdepth 1 ! -name 'venv' -exec rm -rf {} +
           EOF
-          
+
+
           # Copy application files to the EC2 instance
+
           scp -i ec2_ssh_key.pem -r ./* $EC2_USERNAME@$EC2_HOST:/var/www/myapp
-          
+
+
           # SSH into the EC2 instance and run post-deployment commands
+
           ssh -i ec2_ssh_key.pem $EC2_USERNAME@$EC2_HOST << EOF
             cd /var/www/myapp
             # Activate virtual environment
@@ -85,7 +90,10 @@ jobs:
             # Restart your Flask application (assuming using Gunicorn)
             sudo systemctl restart myflaskapp
           EOF
-    
+
+
           # Clean up the SSH key file
+
           rm ec2_ssh_key.pem
+
           echo "Deployment completed successfully!"
