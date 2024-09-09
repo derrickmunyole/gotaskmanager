@@ -1,4 +1,3 @@
----
 name: Deploy Flask Backend to AWS
 on:
   push:
@@ -42,19 +41,13 @@ jobs:
           set -e
 
           # Write the SSH key to a file
-
           echo "$EC2_SSH_KEY" > ec2_ssh_key.pem
-
           chmod 600 ec2_ssh_key.pem
 
-
           echo "Checking SSH connection..."
-
           ssh -v -i ec2_ssh_key.pem -o StrictHostKeyChecking=no $EC2_USERNAME@$EC2_HOST echo "SSH connection successful"
 
-
           # SSH into the EC2 instance and run deployment commands
-
           ssh -i ec2_ssh_key.pem $EC2_USERNAME@$EC2_HOST << EOF
             # Check if the application directory exists
             if [ ! -d "/var/www/myapp" ]; then
@@ -71,29 +64,43 @@ jobs:
             find /var/www/myapp -mindepth 1 -maxdepth 1 ! -name 'venv' -exec rm -rf {} +
           EOF
 
-
           # Copy application files to the EC2 instance
-
           scp -i ec2_ssh_key.pem -r ./* $EC2_USERNAME@$EC2_HOST:/var/www/myapp
 
-
           # SSH into the EC2 instance and run post-deployment commands
-
           ssh -i ec2_ssh_key.pem $EC2_USERNAME@$EC2_HOST << EOF
             cd /var/www/myapp
             # Activate virtual environment
             source venv/bin/activate
             # Install or update dependencies
             pip install -r requirements.txt
+
+            # Check database connection
+            echo "Checking database connection..."
+            python << END
+          import os
+          from sqlalchemy import create_engine
+          from sqlalchemy.exc import SQLAlchemyError
+
+          try:
+              engine = create_engine(os.environ['DATABASE_URL'])
+              connection = engine.connect()
+              print("Successfully connected to the database.")
+              connection.close()
+          except SQLAlchemyError as e:
+              print(f"Error connecting to the database: {str(e)}")
+              exit(1)
+          END
+
             # Run database migrations
+            echo "Running database migrations..."
             flask db upgrade
-            # Restart your Flask application (assuming using Gunicorn)
+
+            # Restart your Flask application
             sudo systemctl restart myflaskapp
           EOF
 
-
           # Clean up the SSH key file
-
           rm ec2_ssh_key.pem
 
           echo "Deployment completed successfully!"
