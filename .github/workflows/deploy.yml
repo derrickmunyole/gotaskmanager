@@ -1,11 +1,11 @@
 name: Deploy Flask Backend to AWS
 on:
-  push:
-    branches:
-      - main
+  release:
+    types: [published]
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: Production
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -46,6 +46,26 @@ jobs:
 
           echo "Checking SSH connection..."
           ssh -v -i ec2_ssh_key.pem -o StrictHostKeyChecking=no $EC2_USERNAME@$EC2_HOST echo "SSH connection successful"
+          
+          # SSH into the EC2 instance and run deployment commands
+          ssh -i ec2_ssh_key.pem $EC2_USERNAME@$EC2_HOST << EOF
+            # Check if the application directory exists
+            if [ ! -d "/var/www/myapp" ]; then
+              echo "Application directory does not exist. Creating it..."
+              sudo mkdir -p /var/www/myapp
+              sudo chown $EC2_USERNAME:$EC2_USERNAME /var/www/myapp
+            else
+              echo "Application directory exists. Creating backup..."
+              timestamp=\$(date +"%Y%m%d_%H%M%S")
+              sudo cp -R /var/www/myapp "/var/www/myapp_backup_\$timestamp"
+            fi
+            
+            # Remove old files (except for the virtual environment)
+            find /var/www/myapp -mindepth 1 -maxdepth 1 ! -name 'venv' -exec rm -rf {} +
+          EOF
+
+          # Copy application files to the EC2 instance
+          scp -i ec2_ssh_key.pem -r ./* $EC2_USERNAME@$EC2_HOST:/var/www/myapp
 
           # SSH into the EC2 instance and run post-deployment commands
           ssh -i ec2_ssh_key.pem $EC2_USERNAME@$EC2_HOST << EOF
@@ -87,7 +107,6 @@ jobs:
             # Restart your Flask application
             sudo systemctl restart myflaskapp
           EOF
-
 
           # Clean up the SSH key file
           rm ec2_ssh_key.pem
