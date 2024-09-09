@@ -1,5 +1,5 @@
 from app import create_app, db
-from config import Config  # Assuming your Config class is in app/config.py
+from config import Config
 
 app = create_app()
 
@@ -13,6 +13,6 @@ def make_shell_context():
 
 if __name__ == '__main__':
     if Config.is_production():
-        app.run(host='0.0.0.0', port=8080, debug=False)
+        app.run(host='0.0.0.0', port=443, debug=False)
     else:
         app.run(host='127.0.0.1', port=5000, debug=True)
