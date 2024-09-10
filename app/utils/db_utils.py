@@ -1,11 +1,10 @@
-from sqlalchemy.sql import func
+from sqlalchemy.sql import expression
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.types import DateTime
 
 
-class UtcNow(func.now):
-    def __init__(self):
-        super().__init__()
+class UtcNow(expression.FunctionElement):
+    type = DateTime()
 
 
 @compiles(UtcNow, 'postgresql')
