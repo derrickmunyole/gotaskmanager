@@ -4,7 +4,8 @@ from sqlalchemy.types import DateTime
 
 
 class UtcNow(func.now):
-    pass
+    def __init__(self):
+        super().__init__()
 
 
 @compiles(UtcNow, 'postgresql')
@@ -15,4 +16,3 @@ def pg_utcnow(element, compiler, **kw):
 @compiles(UtcNow, 'sqlite')
 def sqlite_utcnow(element, compiler, **kw):
     return "CURRENT_TIMESTAMP"
-
