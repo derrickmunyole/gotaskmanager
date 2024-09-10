@@ -7,7 +7,7 @@ Create Date: 2024-09-10 14:00:19.964133
 """
 from alembic import op
 import sqlalchemy as sa
-
+from app.utils.db_utils import UtcNow
 
 # revision identifiers, used by Alembic.
 revision = 'a46a6ec002ba'
@@ -34,7 +34,7 @@ def upgrade():
     op.create_table('token_blacklist',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('jti', sa.String(length=36), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=UtcNow(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('jti')
     )

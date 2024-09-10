@@ -1,12 +1,15 @@
 import jwt
 from sqlalchemy import DateTime, func
+from sqlalchemy.ext.declarative import declarative_base
 
 from app import db
 from app.utils.db_utils import UtcNow
 from datetime import datetime, timezone
 
+Base = declarative_base()
 
-class TokenBlacklist(db.Model):
+
+class TokenBlacklist(Base, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     jti = db.Column(db.String(36), nullable=False, unique=True)
     created_at = db.Column(DateTime(timezone=True), nullable=False, server_default=UtcNow())
