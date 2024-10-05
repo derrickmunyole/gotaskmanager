@@ -18,6 +18,7 @@ from .model import User
 from .. import db
 from ..refreshtoken.model import RefreshToken
 from ..tokenblacklist.model import TokenBlacklist
+from app.models import Session
 
 refresh_tokens = {}  # TODO: This should be a persistent store in production
 
@@ -59,43 +60,39 @@ user_model = ns.model('User', {
 })
 
 
-def token_required(f):
+def session_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        encrypted_token = request.cookies.get('access_token')
+        encrypted_session_id = request.cookies.get('session_id')
 
-        if not encrypted_token:
-            abort(HTTPStatus.UNAUTHORIZED, 'Token is missing!')
+        if not encrypted_session_id:
+            abort(HTTPStatus.UNAUTHORIZED, 'Session ID is missing!')
 
         try:
-            # Decrypt the token
+            # Decrypt the session ID
             fernet_key = Fernet(current_app.config['FERNET_KEY'].encode())
-            decrypted_token = fernet_key.decrypt(encrypted_token.encode('ascii')).decode('utf-8')
+            session_id = fernet_key.decrypt(encrypted_session_id.encode('ascii')).decode('utf-8')
 
-            # Decode the JWT token
-            data = jwt.decode(decrypted_token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
+            # Fetch the session from the database
+            session = Session.query.filter_by(session_id=session_id).first()
 
-            # Convert exp to a timezone-aware datetime
-            exp_datetime = datetime.fromtimestamp(data['exp'], tz=timezone.utc)
+            if not session:
+                abort(HTTPStatus.UNAUTHORIZED, 'Invalid session')
 
-            # Compare with the current UTC time
-            if exp_datetime < datetime.now(timezone.utc):
-                return jsonify({'message': 'Token has expired'}), 401
+                # Check if the session has expired
+                if session.expires_at < datetime.now(timezone.utc):
+                    db.session.delete(session)
+                    db.session.commit()
+                    abort(HTTPStatus.UNAUTHORIZED, 'Session has expired')
 
-            # Check if the token is blacklisted
-            if TokenBlacklist.is_blacklisted(decrypted_token):
-                abort(HTTPStatus.UNAUTHORIZED, 'Token has been invalidated')
+                # Fetch the current user
+                current_user = User.query.get(session.user_id)
+                if not current_user:
+                    abort(HTTPStatus.UNAUTHORIZED, 'User not found')
 
-            # Get the current user
-            current_user = User.query.get(data['user_id'])
-            if not current_user:
-                abort(HTTPStatus.UNAUTHORIZED, 'User not found')
+                return f(*args, current_user=current_user, **kwargs)
 
-            return f(*args, current_user=current_user, **kwargs)
-
-        except jwt.ExpiredSignatureError:
-            abort(HTTPStatus.UNAUTHORIZED, 'Token has expired')
-        except (jwt.InvalidTokenError, Exception) as e:
+        except Exception as e:
             abort(HTTPStatus.UNAUTHORIZED, str(e))
 
     return decorated
@@ -130,35 +127,22 @@ class UserLogin(Resource):
                     'message': 'Incorrect password. Please try again.'
                 }, HTTPStatus.UNAUTHORIZED
 
-            access_token = jwt.encode({
-                'user_id': user.id,
-                'exp': datetime.now(timezone.utc) + timedelta(minutes=30),
-                'jti': str(uuid.uuid4())
-            }, current_app.config['SECRET_KEY'], algorithm='HS256')
-
-            # Generate a unique session ID
+                # Generate a unique session ID
             session_id = secrets.token_urlsafe(32)
-            print(f"Type: {type(session_id)} Value: {session_id}")
 
-            # Generate a refresh token
-            refresh_token = secrets.token_urlsafe(64)
-
-            # Create a new RefreshToken instance
-            new_refresh_token = RefreshToken(
+            # Create a new session
+            new_session = Session(
                 user_id=user.id,
-                token=refresh_token,
                 session_id=session_id,
                 created_at=datetime.now(timezone.utc),
                 expires_at=datetime.now(timezone.utc) + timedelta(minutes=30)
             )
 
-            # Add and commit the new refresh token to the database
-            db.session.add(new_refresh_token)
+            # Add and commit the new session to the database
+            db.session.add(new_session)
             db.session.commit()
 
             fernet_key = Fernet(current_app.config['FERNET_KEY'])
-
-            encrypted_access_token = fernet_key.encrypt(access_token.encode('ascii')).decode('utf-8')
             encrypted_session_id = fernet_key.encrypt(session_id.encode('ascii')).decode('utf-8')
 
             response = make_response({
@@ -166,15 +150,6 @@ class UserLogin(Resource):
                 'message': 'Successfully logged in.',
                 'session_id': encrypted_session_id
             })
-
-            response.set_cookie(
-                'access_token',
-                encrypted_access_token,
-                httponly=True,
-                secure=True,
-                samesite='Strict',
-                max_age=1800
-            )
 
             return response
         except Exception as e:
@@ -321,7 +296,7 @@ class UserLogout(Resource):
     @ns.response(HTTPStatus.BAD_REQUEST, 'Bad request', user_logout_model)
     @ns.response(HTTPStatus.UNAUTHORIZED, 'Logout failed', user_logout_model)
     @ns.response(HTTPStatus.INTERNAL_SERVER_ERROR, 'Internal server error', user_logout_model)
-    @token_required
+    @session_required
     def post(self, current_user):
         try:
             data = request.get_json()
@@ -420,7 +395,7 @@ class RefreshTokenResource(Resource):
 
 @ns.route('/info')
 class UserInfo(Resource):
-    @token_required
+    @session_required
     @ns.response(HTTPStatus.OK, 'Success')
     @ns.response(HTTPStatus.UNAUTHORIZED, 'Unauthorized')
     @ns.marshal_with(user_model)

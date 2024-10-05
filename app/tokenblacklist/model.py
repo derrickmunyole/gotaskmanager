@@ -10,6 +10,8 @@ Base = declarative_base()
 
 
 class TokenBlacklist(Base, db.Model):
+    __tablename__ = 'blacklist_tokens'
+
     id = db.Column(db.Integer, primary_key=True)
     jti = db.Column(db.String(36), nullable=False, unique=True)
     created_at = db.Column(DateTime(timezone=True), nullable=False, server_default=UtcNow())

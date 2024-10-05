@@ -1,15 +1,24 @@
 import pytest
-from app.models import User
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from app.user.model import Base, User
 
 
-def test_new_user():
-    """
-    GIVEN a User model
-    WHEN a new User is created
-    THEN check the email, username, hashed_password, and password verification work correctly
-    """
+@pytest.fixture(scope="function")
+def db_session():
+    engine = create_engine('sqlite:///:memory:')
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    yield session
+    session.close()
+
+
+def test_new_user(db_session):
     user = User(first_name='Pat', last_name='Kennedy', username='patkennedy79', email='patkennedy79@gmail.com')
     user.set_password('FlaskIsAwesome')
+    db_session.add(user)
+    db_session.commit()
 
     assert user.first_name == 'Pat'
     assert user.last_name == 'Kennedy'
@@ -19,4 +28,3 @@ def test_new_user():
     assert user.password_hash != 'FlaskIsAwesome'
     assert user.check_password('FlaskIsAwesome')
     assert not user.check_password('WrongPassword')
-

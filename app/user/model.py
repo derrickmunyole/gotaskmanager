@@ -1,10 +1,14 @@
 from flask_login import UserMixin
+from sqlalchemy.orm import declarative_base
 from werkzeug.security import check_password_hash, generate_password_hash
-
 from app import db
 
+Base = declarative_base()
 
-class User(UserMixin, db.Model):
+
+class User(Base, UserMixin, db.Model):
+    __tablename__ = 'users'
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     first_name = db.Column(db.String(50))
     last_name = db.Column(db.String(50))

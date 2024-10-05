@@ -7,8 +7,10 @@ Base = declarative_base()
 
 
 class RefreshToken(Base,db.Model):
+    __tablename__ = 'refresh_tokens'
+
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     token = db.Column(db.String(255), unique=True, nullable=False)
     session_id = db.Column(db.String(255), unique=True, nullable=False)
     created_at = db.Column(DateTime(timezone=True), nullable=False, server_default=UtcNow())
