@@ -7,11 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.exceptions import NotFound
 
 from app import db
-from app.tag.model import Tag
-from .model import Task
-from ..comment.model import Comment
-from ..project.model import Project
-from ..user.model import User
+from app.models import Comment, Project, Task, User, Tag
 
 ns = Namespace('task', description='Task related operations')
 logger = logging.getLogger(__name__)

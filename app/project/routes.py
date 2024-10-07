@@ -1,7 +1,7 @@
 from flask import request
 from flask_restx import Namespace, Resource, fields
 from app import db
-from .model import Project
+from app.models import Project
 from sqlalchemy.exc import SQLAlchemyError
 from http import HTTPStatus
 

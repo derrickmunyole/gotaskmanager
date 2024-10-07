@@ -2,7 +2,7 @@ from flask import request
 from flask_restx import Namespace, Resource, fields
 from sqlalchemy.exc import SQLAlchemyError
 from app import db
-from .model import Comment
+from app.models import Comment
 from http import HTTPStatus
 
 comments_ns = Namespace('comments', description='Comment operations')

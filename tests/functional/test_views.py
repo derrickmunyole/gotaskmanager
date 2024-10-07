@@ -3,7 +3,6 @@ import json
 import jwt
 from datetime import datetime, timedelta, timezone
 
-from app.user.model import User
 
 
 def test_user_registration(test_client, init_database):

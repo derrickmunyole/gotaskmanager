@@ -4,7 +4,7 @@ from flask_restx import Namespace, Resource, fields
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import db
-from .model import Tag
+from app.models import Tag
 
 tags_ns = Namespace('tags', description='Tag operations')
 

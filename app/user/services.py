@@ -1,4 +1,4 @@
-from app.refreshtoken.model import RefreshToken
+from app.models import RefreshToken
 from app.refreshtoken.services import generate_new_access_token
 
 
