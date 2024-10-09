@@ -1,0 +1,50 @@
+[flake8]
+# Maximum line length
+max-line-length = 100
+
+# Exclude these directories and files
+exclude =
+    .git,
+    __pycache__,
+    venv,
+    env,
+    .venv,
+    .env,
+    migrations
+
+# Ignore some errors and warnings
+ignore =
+    # Line break before binary operator (W503) - This is actually preferred in modern Python
+    W503,
+    # Line break after binary operator (W504)
+    W504,
+    # Module level import not at top of file (E402) - Sometimes needed in Flask apps
+    E402
+
+# Maximum complexity allowed for functions
+max-complexity = 10
+
+# Additional plugins (optional, but recommended)
+extend-select =
+    # Flask-specific checks
+    FL,
+    # Check for unused imports
+    F401,
+    # Check for unused variables
+    F841
+
+# Python version
+python_version = 3.7
+
+# Output format
+format = ${cyan}%(path)s${reset}:${yellow_bold}%(row)d${reset}:${green_bold}%(col)d${reset}: ${red_bold}%(code)s${reset} %(text)s
+
+# Set the strictness level
+# 1 for loose, 2 for medium, 3 for strict
+strictness = 2
+
+# Show source code for each error
+show-source = True
+
+# Count the number of occurrences of each error/warning code
+statistics = True
