@@ -1,6 +1,6 @@
 import logging
 import secrets
-from datetime import datetime, timezone, timedelta
+from datetime import timedelta
 from functools import wraps
 from http import HTTPStatus
 
@@ -13,8 +13,8 @@ from werkzeug.exceptions import BadRequest
 from werkzeug.security import generate_password_hash
 
 from app.models import User, Session
-from .. import db
 from app.session_manager import SessionManager
+from .. import db
 
 logger = logging.getLogger(__name__)
 bp = Blueprint('user', __name__)
@@ -41,8 +41,13 @@ user_logout_model = ns.model('UserLogout', {
     'refresh_token': fields.String(required=True, description='Refresh Token')
 })
 
-refresh_token_model = ns.model('RefreshTokenInput', {
-    'session_id': fields.String(required=True, description='Encrypted Session ID')
+refresh_session_model = ns.model('RefreshSession', {
+    # This model is intentionally left empty because we're using cookies for the session ID
+})
+
+refresh_session_response_model = ns.model('RefreshSessionResponse', {
+    'success': fields.Boolean(description='Indicates if the session refresh was successful'),
+    'message': fields.String(description='A message describing the result of the operation')
 })
 
 user_model = ns.model('User', {
@@ -59,6 +64,8 @@ def session_required(f):
     def decorated(*args, **kwargs):
         encrypted_session_id = request.cookies.get('session_id')
 
+        print(encrypted_session_id)
+
         if not encrypted_session_id:
             abort(HTTPStatus.UNAUTHORIZED, 'Session ID is missing!')
 
@@ -67,13 +74,19 @@ def session_required(f):
             fernet_key = Fernet(current_app.config['FERNET_KEY'].encode())
             session_id = fernet_key.decrypt(encrypted_session_id.encode('ascii')).decode('utf-8')
 
+            print(f'Decrypted SessionId: {session_id}')
+
             if not SessionManager.is_session_valid(session_id):
                 abort(HTTPStatus.UNAUTHORIZED, 'Invalid or expired session')
 
             SessionManager.renew_session(session_id)
 
             session = Session.query.filter_by(session_id=session_id).first()
+
+            print(f'SESSION: {session}')
             current_user = User.query.get(session.user_id)
+
+            print(f'CURRENT USER: {current_user}')
             if not current_user:
                 abort(HTTPStatus.UNAUTHORIZED, 'User not found')
 
@@ -83,6 +96,11 @@ def session_required(f):
             abort(HTTPStatus.UNAUTHORIZED, str(e))
 
     return decorated
+
+
+# Constants for session durations
+SESSION_DURATION = timedelta(days=14)
+COOKIE_NAME_SESSION_ID = 'session_id'
 
 
 @ns.route('/login')
@@ -123,9 +141,18 @@ class UserLogin(Resource):
 
             response = make_response({
                 'success': True,
-                'message': 'Successfully logged in.',
-                'session_id': encrypted_session_id
+                'message': 'Successfully logged in.'
             })
+
+            # Set the encrypted session ID as an HTTPOnly cookie
+            response.set_cookie(
+                COOKIE_NAME_SESSION_ID,
+                encrypted_session_id,
+                httponly=True,
+                secure=True,  # Use this in production with HTTPS
+                samesite='Lax',
+                max_age=int(SESSION_DURATION.total_seconds())
+            )
 
             return response
         except Exception as e:
@@ -198,6 +225,63 @@ class UserRegister(Resource):
                 'success': False,
                 'message': 'An unexpected error occurred'
             }, HTTPStatus.INTERNAL_SERVER_ERROR
+
+
+@ns.route('/refresh-session')
+class RefreshSession(Resource):
+    @ns.expect(refresh_session_model)
+    @ns.response(HTTPStatus.OK, 'Success', refresh_session_response_model)
+    @ns.response(HTTPStatus.BAD_REQUEST, 'Bad request')
+    @ns.response(HTTPStatus.UNAUTHORIZED, 'Unauthorized')
+    def post(self):
+        try:
+            # Get the encrypted session ID from the cookie
+
+            encrypted_session_id = request.cookies.get('session_id')
+
+            if not encrypted_session_id:
+                return {'message': 'No session ID provided'}, HTTPStatus.UNAUTHORIZED
+
+            # Decrypt the session ID
+            fernet_key = Fernet(current_app.config['FERNET_KEY'])
+            session_id = fernet_key.decrypt(encrypted_session_id.encode('ascii')).decode('utf-8')
+
+            # Use the SessionManager to validate and refresh the session
+            if SessionManager.is_session_valid(session_id):
+                # Renew the session
+                SessionManager.renew_session(session_id)
+
+                # Get the user associated with this session
+                session = Session.query.filter_by(session_id=session_id).first()
+                user = User.query.get(session.user_id)
+
+                response = make_response({
+                    'success': True,
+                    'message': 'Session refreshed successfully'
+                })
+
+                # Optionally, you might want to issue a new session ID for added security
+                new_session_id = secrets.token_urlsafe(32)
+                SessionManager.update_session_id(session_id, new_session_id)
+
+                encrypted_new_session_id = fernet_key.encrypt(new_session_id.encode('ascii')).decode('utf-8')
+
+                response.set_cookie('session_id',
+                                    encrypted_new_session_id,
+                                    httponly=True,
+                                    secure=True,
+                                    samesite='Lax',
+                                    max_age=int(SESSION_DURATION.total_seconds())
+                                    )
+
+                return response
+
+            else:
+                return {'message': 'Invalid or expired session'}, HTTPStatus.UNAUTHORIZED
+
+        except Exception as e:
+            current_app.logger.error(f"Session refresh error: {str(e)}")
+            return {'message': 'An error occurred while refreshing the session'}, HTTPStatus.INTERNAL_SERVER_ERROR
 
 
 @ns.route('/update')
@@ -295,3 +379,14 @@ class UserInfo(Resource):
     def get(self, **kwargs):
         user = kwargs.get('current_user')
         return user, HTTPStatus.OK
+
+
+@ns.route('/check-auth')
+class CheckAuth(Resource):
+    @session_required
+    def get(self, current_user):
+        return {
+            'isAuthenticated': True,
+            'userId': current_user.id,
+            'email': current_user.email
+        }
