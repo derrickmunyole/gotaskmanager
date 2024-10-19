@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from http import HTTPStatus
 
 from flask import request, jsonify
@@ -124,7 +125,8 @@ class TaskList(Resource):
 
             new_task = Task(
                 title=title,
-                description=description
+                description=description,
+                created_at=datetime.now(timezone.utc)
             )
 
             db.session.add(new_task)
