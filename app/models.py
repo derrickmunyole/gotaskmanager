@@ -37,6 +37,7 @@ class Task(db.Model):
     description = db.Column(db.Text)
     created_at = db.Column(db.DateTime)
     updated_at = db.Column(db.DateTime)
+    completed = db.Column(db.Boolean, default=False)
     due_date = db.Column(db.DateTime)
     completed_at = db.Column(db.DateTime)
     status = db.Column(db.String(80))
@@ -75,6 +76,10 @@ class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
+    duration = db.Column(db.Integer)
+    deadline = db.Column(db.DateTime)
+    status = db.Column(db.String(80))
+    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
 
     tasks = relationship('Task', back_populates='project')
 
@@ -125,7 +130,16 @@ class Session(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     session_id = db.Column(db.String(64), unique=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    expires_at = db.Column(db.DateTime, nullable=False)
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
+
+    @staticmethod
+    def create(user_id, session_id, expiration_delta):
+        return Session(
+            user_id=user_id,
+            session_id=session_id,
+            created_at=datetime.now(timezone.utc),
+            expires_at=datetime.now(timezone.utc) + expiration_delta
+        )
 
     def __repr__(self):
         return f'<Session {self.session_id}>'
