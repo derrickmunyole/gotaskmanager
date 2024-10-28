@@ -1,3 +1,5 @@
+import json
+
 from sqlalchemy import DateTime
 from datetime import datetime, timezone
 
@@ -144,3 +146,25 @@ class Session(db.Model):
 
     def __repr__(self):
         return f'<Session {self.session_id}>'
+
+
+class Activities(db.Model):
+    __tablename__ = 'activities'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False)
+    action_type = db.Column(db.String(50), nullable=False)
+    target_type = db.Column(db.String(50), nullable=False)
+    target_id = db.Column(db.Integer, nullable=False)
+    details = db.Column(db.TEXT, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+
+    @property
+    def details_json(self):
+        return json.loads(self.details) if self.details else {}
+
+    @details_json.setter
+    def details_json(self, value):
+        self.details = json.dumps(value)
+
