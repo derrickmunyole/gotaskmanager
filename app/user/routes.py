@@ -60,6 +60,22 @@ user_model = ns.model('User', {
 
 
 def session_required(f):
+    """
+    A decorator that ensures a valid session exists for the current request.
+
+    This decorator checks for the presence of a session ID in the request cookies,
+    validates the session, and attaches the current user to the request context.
+    If the session is invalid or expired, it aborts the request with an UNAUTHORIZED status.
+
+    Args:
+        f (function): The view function to be decorated.
+
+    Returns:
+        function: The decorated function that includes session validation logic.
+
+    Raises:
+        HTTPException: An UNAUTHORIZED exception if the session is invalid or expired.
+    """
     @wraps(f)
     def decorated(*args, **kwargs):
         encrypted_session_id = request.cookies.get('session_id')
@@ -144,12 +160,11 @@ class UserLogin(Resource):
                 'message': 'Successfully logged in.'
             })
 
-            # Set the encrypted session ID as an HTTPOnly cookie
             response.set_cookie(
                 COOKIE_NAME_SESSION_ID,
                 encrypted_session_id,
                 httponly=True,
-                secure=True,  # Use this in production with HTTPS
+                secure=True,
                 samesite='Lax',
                 max_age=int(SESSION_DURATION.total_seconds())
             )
@@ -235,8 +250,6 @@ class RefreshSession(Resource):
     @ns.response(HTTPStatus.UNAUTHORIZED, 'Unauthorized')
     def post(self):
         try:
-            # Get the encrypted session ID from the cookie
-
             encrypted_session_id = request.cookies.get('session_id')
 
             if not encrypted_session_id:
@@ -364,10 +377,11 @@ class UserLogout(Resource):
             session_id = fernet_key.decrypt(encrypted_session_id.encode('ascii')).decode('utf-8')
 
             if SessionManager.invalidate_session(session_id):
-                return jsonify({'message': 'Logged out successfully!'}), 200
+                return {'message': 'Logged out successfully!'}, 200
             return jsonify({'message': 'Invalid session!'}), 400
         except Exception as e:
-            return jsonify({'message': 'There was an error while trying to log out: {}'.format(e)}), 500
+            return ({'message': 'There was an error while trying to log out: {}'.format(e)}
+                    , 500)
 
 
 @ns.route('/info')
@@ -390,3 +404,19 @@ class CheckAuth(Resource):
             'userId': current_user.id,
             'email': current_user.email
         }
+
+
+@ns.route('/ui-preferences')
+class UiPreferences(Resource):
+    @session_required
+    def get(self, current_user):
+        return {
+            'viewMode': current_user.view_mode
+        }
+
+    @session_required
+    def post(self, current_user):
+        data = request.get_json()
+        current_user.view_mode = data.get('viewMode', 'list')
+        db.session.commit()
+        return {'success': True}
