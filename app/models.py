@@ -19,6 +19,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(64), index=True)
     email = db.Column(db.String(120), index=True)
     password_hash = db.Column(db.Text)
+    view_mode = db.Column(db.String(80))
 
     tasks = relationship('Task', back_populates='assignee')
 
