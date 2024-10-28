@@ -19,4 +19,4 @@ class Config:
 
 
 class TestConfig(Config):
-    SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URL') or 'sqlite:///test.db'
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///test.db'

@@ -6,11 +6,10 @@ from datetime import datetime, timezone, timedelta
 class SessionManager:
     @staticmethod
     def create_session(user_id, session_id):
-        new_session = Session(
+        new_session = Session.create(
             user_id=user_id,
             session_id=session_id,
-            created_at=datetime.now(timezone.utc),
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=1)
+            expiration_delta=timedelta(hours=1)
         )
         db.session.add(new_session)
         db.session.commit()
@@ -30,12 +29,29 @@ class SessionManager:
         if session:
             session.expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
             db.session.commit()
+            print(f"Session renewed. New expiration: {session.expires_at}")
             return True
         return False
 
     @staticmethod
     def is_session_valid(session_id):
         session = Session.query.filter_by(session_id=session_id).first()
-        if session and session.expires_at > datetime.now(timezone.utc):
+        print(f"Session found: {session}")
+        if session:
+            print(f"Session expiration: {session.expires_at}")
+            current_time = datetime.now(timezone.utc)
+            print(f"Current time: {current_time}")
+            if session.expires_at > current_time:
+                return True
+        return False
+
+    @staticmethod
+    def update_session_id(old_session_id, new_session_id):
+        session = Session.query.filter_by(session_id=old_session_id).first()
+        if session:
+            session.session_id = new_session_id
+            session.expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+            db.session.commit()
+            print(f"Session ID updated. New session ID: {new_session_id}, New expiration: {session.expires_at}")
             return True
         return False
