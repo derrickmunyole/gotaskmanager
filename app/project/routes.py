@@ -1,28 +1,35 @@
-from flask import request
+from flask import make_response
 from flask_restx import Namespace, Resource, fields
 from app import db
 from app.models import Project
 from sqlalchemy.exc import SQLAlchemyError
 from http import HTTPStatus
-
+import json
 
 project_ns = Namespace('projects', description='Project operations')
-
 
 project_model = project_ns.model('Project', {
     'id': fields.Integer(readonly=True, description='The project unique identifier'),
     'name': fields.String(required=True, description='The project name'),
-    'description': fields.String(description='The project description')
+    'description': fields.String(description='The project description'),
+    'duration': fields.Integer(description='The project duration'),
+    'deadline': fields.Integer(description='The project deadline'),
+    'status': fields.String(description='The project status'),
+    'created_at': fields.DateTime(descripton='The project creation time')
 })
 
 
-@project_ns.route('/')
+@project_ns.route('')
 class ProjectList(Resource):
     @project_ns.doc('list_projects')
     @project_ns.marshal_list_with(project_model)
     def get(self):
         try:
-            return Project.query.all()
+            projects = Project.query.all()
+
+            if not projects:
+                project_ns.abort(HTTPStatus.NOT_FOUND, "Projects not found")
+            return projects
         except SQLAlchemyError as e:
             project_ns.abort(
                 HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -34,7 +41,7 @@ class ProjectList(Resource):
     @project_ns.marshal_with(project_model, code=201)
     def post(self):
         data = project_ns.payload
-        new_project = Project(name=data['name'], description=data.get('description'))
+        new_project = Project(name=data.get('name'), description=data.get('description'))
         try:
             db.session.add(new_project)
             db.session.commit()
