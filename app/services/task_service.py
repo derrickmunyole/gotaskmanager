@@ -3,12 +3,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import db
 from app.aop import log_activity
 from app.models import Task
+from app.routes.users import session_required
 
 
 class TaskService:
     @staticmethod
+    @session_required
     @log_activity('create', 'task')
-    def create_task(data):
+    def create_task(data, current_user):
         """
         Creates a new task and saves it to the database.
 
@@ -21,6 +23,8 @@ class TaskService:
             data (dict): A dictionary containing the task data to be used for creating
                          the Task object.
 
+            current_user:
+
         Returns:
             Task: The newly created Task object.
 
@@ -29,7 +33,7 @@ class TaskService:
                        during the task creation process.
         """
         try:
-            if not all(key in data for key in ['title', 'description']):
+            if not all(key in data for key in ['title']):
                 raise ValueError("Required values are missing")
 
             task = Task(**data)
@@ -40,6 +44,4 @@ class TaskService:
             db.session.rollback()
             raise Exception("Database error occurred") from e
         except Exception as e:
-            raise Exception("An error occurred while creating the task")
-
-
+            raise Exception("An error occurred while creating the task") from e
