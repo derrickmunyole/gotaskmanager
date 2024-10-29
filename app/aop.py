@@ -1,5 +1,7 @@
-from sqlalchemy.sql.functions import current_user
+import json
+
 from app import db
+
 from app.models import Activities
 
 
@@ -18,6 +20,7 @@ def log_activity(action_type, target_type):
     Returns:
         function: A wrapped function that logs the activity when called.
     """
+
     def decorator(func):
         """
         Inner decorator function that wraps the original function.
@@ -28,6 +31,7 @@ def log_activity(action_type, target_type):
         Returns:
             function: The wrapped function with logging capability.
         """
+
         def wrapper(*args, **kwargs):
             """
             Wrapper function that executes the original function and logs the activity.
@@ -42,17 +46,30 @@ def log_activity(action_type, target_type):
             try:
                 result = func(*args, **kwargs)
 
-                activity = Activities(
-                    user_id=current_user.id,
-                    action_type=action_type,
-                    target_type=target_type,
-                    target_id=result.id if hasattr(result, 'id') else None
-                )
-                db.session.add(activity)
-                db.session.commit()
-                return result
+                current_user = kwargs.get('current_user')
+
+                if current_user:
+                    details = {
+                        'actor': current_user.username,
+                        'action': action_type,
+                        'target': target_type,
+                        'task_title': result.title if hasattr(result, 'title') else None
+                    }
+
+                    activity = Activities(
+                        user_id=current_user.id,
+                        action_type=action_type,
+                        target_type=target_type,
+                        target_id=result.id if hasattr(result, 'id') else None,
+                        details=json.dumps(details)
+                    )
+                    db.session.add(activity)
+                    db.session.commit()
+                    return result
             except Exception as e:
                 print(f"Error logging activity: {str(e)}")
                 return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
