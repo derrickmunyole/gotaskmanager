@@ -13,8 +13,8 @@ from werkzeug.exceptions import BadRequest
 from werkzeug.security import generate_password_hash
 
 from app.models import User, Session
-from app.session_manager import SessionManager
-from .. import db
+from app.session import SessionManager
+from app import db
 
 logger = logging.getLogger(__name__)
 bp = Blueprint('user', __name__)

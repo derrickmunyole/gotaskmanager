@@ -1,8 +1,10 @@
 import json
-
+import logging
 from app import db
 
 from app.models import Activities
+
+logger = logging.getLogger(__name__)
 
 
 def log_activity(action_type, target_type):
@@ -55,6 +57,10 @@ def log_activity(action_type, target_type):
                         'target': target_type,
                         'task_title': result.title if hasattr(result, 'title') else None
                     }
+
+                    logger.debug(f"Details object before JSON conversion: {details}")
+                    json_details = json.dumps(details)
+                    logger.debug(f"JSON-encoded details: {json_details}")
 
                     activity = Activities(
                         user_id=current_user.id,

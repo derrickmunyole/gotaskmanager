@@ -9,6 +9,7 @@ from werkzeug.exceptions import NotFound
 
 from app import db
 from app.models import Comment, Project, Task, User, Tag
+from app.services.task import TaskService
 
 ns = Namespace('task', description='Task related operations')
 logger = logging.getLogger(__name__)
@@ -113,37 +114,20 @@ class TaskList(Resource):
     @ns.response(HTTPStatus.INTERNAL_SERVER_ERROR, 'Internal server error')
     def post(self):
         try:
-            data = request.get_json()
-            title = data.get('title')
-            description = data.get('description')
+            data = ns.payload
 
-            if not title:
-                return {
-                    'success': False,
-                    'error': 'Title is required'
-                }, HTTPStatus.BAD_REQUEST
-
-            new_task = Task(
-                title=title,
-                description=description,
-                created_at=datetime.now(timezone.utc)
-            )
-
-            db.session.add(new_task)
-            db.session.commit()
+            new_task = TaskService.create_task(data)
 
             return {
                 'success': True,
                 'message': 'Task created successfully',
                 'task': new_task
             }, HTTPStatus.CREATED
-        except SQLAlchemyError as e:
-            db.session.rollback()
-            logger.error("Database error while creating new task", exc_info=True)
+        except ValueError as e:
             return {
                 'success': False,
-                'error': "Database error occurred. Please try again later."
-            }, HTTPStatus.INTERNAL_SERVER_ERROR
+                'error': str(e)
+            }, HTTPStatus.BAD_REQUEST
         except Exception as e:
             logger.info("Error creating new task", exc_info=e)
             return {

@@ -1,13 +1,13 @@
 import json
-
-from sqlalchemy import DateTime
 from datetime import datetime, timezone
 
-from app import db
-from app.utils.db_utils import UtcNow
 from flask_login import UserMixin
-from werkzeug.security import check_password_hash, generate_password_hash
+from sqlalchemy import DateTime
 from sqlalchemy.orm import relationship, declarative_base
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from app import db
+from app.utils.db import UtcNow
 
 Base = declarative_base()
 
@@ -40,7 +40,7 @@ class Task(db.Model):
     description = db.Column(db.Text)
     created_at = db.Column(db.DateTime)
     updated_at = db.Column(db.DateTime)
-    completed = db.Column(db.Boolean, default=False)
+    is_completed = db.Column(db.Boolean, default=False)
     due_date = db.Column(db.DateTime)
     completed_at = db.Column(db.DateTime)
     status = db.Column(db.String(80))
@@ -81,10 +81,28 @@ class Project(db.Model):
     description = db.Column(db.Text)
     duration = db.Column(db.Integer)
     deadline = db.Column(db.DateTime)
-    status = db.Column(db.String(80))
+    status = db.Column(db.String(80), default="NOT STARTED")
+    is_archived = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
 
     tasks = relationship('Task', back_populates='project')
+
+    @property
+    def progress(self):
+        """
+        Calculate the progress of tasks as a percentage.
+
+        This property computes the percentage of completed tasks out of the total
+        number of tasks. If there are no tasks, it returns 0.
+
+        Returns:
+            int: The percentage of completed tasks. Rounded to the nearest integer.
+        """
+        list_of_tasks = list(self.tasks)
+        if not list_of_tasks:
+            return 0
+        completed_tasks = sum(1 for task in list_of_tasks if task.is_completed)
+        return round((completed_tasks / len(list_of_tasks)) * 100)
 
 
 class Tag(db.Model):
@@ -153,7 +171,6 @@ class Activities(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False)
     action_type = db.Column(db.String(50), nullable=False)
     target_type = db.Column(db.String(50), nullable=False)
     target_id = db.Column(db.Integer, nullable=False)

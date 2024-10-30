@@ -29,7 +29,6 @@ class SessionManager:
         if session:
             session.expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
             db.session.commit()
-            print(f"Session renewed. New expiration: {session.expires_at}")
             return True
         return False
 
@@ -38,9 +37,7 @@ class SessionManager:
         session = Session.query.filter_by(session_id=session_id).first()
         print(f"Session found: {session}")
         if session:
-            print(f"Session expiration: {session.expires_at}")
             current_time = datetime.now(timezone.utc)
-            print(f"Current time: {current_time}")
             if session.expires_at > current_time:
                 return True
         return False
@@ -52,6 +49,5 @@ class SessionManager:
             session.session_id = new_session_id
             session.expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
             db.session.commit()
-            print(f"Session ID updated. New session ID: {new_session_id}, New expiration: {session.expires_at}")
             return True
         return False

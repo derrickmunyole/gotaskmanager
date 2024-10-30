@@ -37,17 +37,19 @@ def create_app(config_class=Config):
         return resp
 
     # Import and register namespaces
-    from app.user.routes import ns as user_ns
-    from app.task.routes import ns as task_ns
-    from app.project.routes import project_ns
-    from app.comment.routes import comments_ns
-    from app.tag.routes import tags_ns
+    from app.routes.users import ns as user_ns
+    from app.routes.tasks import ns as task_ns
+    from app.routes.projects import project_ns
+    from app.routes.comments import comments_ns
+    from app.routes.tags import tags_ns
+    from app.routes.activities import activities_ns
 
     api.add_namespace(user_ns, path='/api/user')
     api.add_namespace(task_ns, path='/api/tasks')
     api.add_namespace(project_ns, path='/api/projects')
     api.add_namespace(comments_ns, path='/api/comments')
     api.add_namespace(tags_ns, path='/api/tags')
+    api.add_namespace(activities_ns, path='/api/activities')
 
     from app import models
 

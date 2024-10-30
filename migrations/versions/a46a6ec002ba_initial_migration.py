@@ -7,7 +7,7 @@ Create Date: 2024-09-10 14:00:19.964133
 """
 from alembic import op
 import sqlalchemy as sa
-from app.utils.db_utils import UtcNow
+from app.utils.db import UtcNow
 
 # revision identifiers, used by Alembic.
 revision = 'a46a6ec002ba'
